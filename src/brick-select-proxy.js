@@ -59,21 +59,19 @@
 
     var template = importDoc.querySelector(TMPL_ROOT);
 
-    shimShadowStyles(template.content.querySelectorAll('style'),
-                     'brick-select-proxy');
-
-    var shadowRoot = this.createShadowRoot();
-    shadowRoot.appendChild(template.content.cloneNode(true));
+    var root = this.root = document.createElement('div');
+    root.className = 'brick-select-proxy-root';
+    root.appendChild(template.content.cloneNode(true));
 
     var title = this.getAttribute('title');
     if (title) {
-      shadowRoot.querySelector('header h1').textContent = title;
+      root.querySelector('header h1').textContent = title;
     } else {
-      var header = shadowRoot.querySelector('header');
+      var header = root.querySelector('header');
       header.parentNode.removeChild(header);
     }
 
-    shadowRoot.querySelector('button.handle span').textContent = title;
+    root.querySelector('button.handle span').textContent = title;
 
     for (var k in attrs) {
       if (this.hasAttribute(k)) {
@@ -84,7 +82,9 @@
 
   BrickSelectProxyElementPrototype.attachedCallback = function () {
     var self = this;
-    var shadowRoot = this.shadowRoot;
+    var root = this.root;
+
+    this.appendChild(this.root);
 
     this.updateSelectFromDialog();
 
@@ -99,33 +99,33 @@
     });
 
     // Clicks on the visible select handle button shows the dialog
-    shadowRoot.querySelector('button.handle')
+    root.querySelector('button.handle')
       .addEventListener('click', function (ev) {
         self.show();
         return stopEvent(ev);
       });
 
-    shadowRoot.querySelector('button.close')
+    root.querySelector('button.close')
       .addEventListener('click', function (ev) {
         self.hide();
         return stopEvent(ev);
       });
 
-    shadowRoot.querySelector('button.cancel')
+    root.querySelector('button.cancel')
       .addEventListener('click', function (ev) {
         self.hide();
         return stopEvent(ev);
       });
 
-    shadowRoot.querySelector('button.commit')
+    root.querySelector('button.commit')
       .addEventListener('click', function (ev) {
         self.hide();
         self.updateSelectFromDialog();
         return stopEvent(ev);
       });
 
-    shadowRoot.addEventListener('click', function (ev) {
-      if (ev.target === self.shadowRoot.querySelector('.dialogue')) {
+    root.addEventListener('click', function (ev) {
+      if (ev.target === self.root.querySelector('.dialogue')) {
         self.hide();
       } else {
         delegate('.menu-item', function (ev) {
@@ -145,6 +145,7 @@
   };
 
   BrickSelectProxyElementPrototype.detachedCallback = function () {
+    this.root.parentNode.removeChild(this.root);
   };
 
   BrickSelectProxyElementPrototype.attributeChangedCallback = function (attr, oldVal, newVal) {
@@ -158,7 +159,7 @@
   BrickSelectProxyElementPrototype.show = function () {
     this.updateDialogFromSelect();
 
-    var dialogue = this.shadowRoot.querySelector('.dialogue');
+    var dialogue = this.root.querySelector('.dialogue');
     dialogue.setAttribute('show', 'in');
 
     function animEnd () {
@@ -171,7 +172,7 @@
   };
 
   BrickSelectProxyElementPrototype.hide = function () {
-    var dialogue = this.shadowRoot.querySelector('.dialogue');
+    var dialogue = this.root.querySelector('.dialogue');
     dialogue.setAttribute('show', 'out');
 
     function animEnd (ev) {
@@ -204,14 +205,14 @@
   };
 
   BrickSelectProxyElementPrototype.clearSelected = function () {
-    var selected = this.shadowRoot.querySelectorAll('li');
+    var selected = this.root.querySelectorAll('li');
     for (var i = 0; i < selected.length; i++) {
       selected[i].classList.remove('selected');
     }
   };
 
   BrickSelectProxyElementPrototype.updateDialogFromSelect = function () {
-    var menu = this.shadowRoot.querySelector('ul.menu');
+    var menu = this.root.querySelector('ul.menu');
 
     // Clear out any existing items.
     while (menu.firstChild) {
@@ -257,7 +258,7 @@
     }
 
     // Walk through all the selected items in the dialog
-    var selected = this.shadowRoot.querySelectorAll('li.selected');
+    var selected = this.root.querySelectorAll('li.selected');
     for (var j = 0; j < selected.length; j++) {
       var item = selected[j];
       var value = item.getAttribute('data-value');
@@ -280,16 +281,16 @@
   // Update the handle button label with the list of selections
   BrickSelectProxyElementPrototype.updateHandleText = function () {
     var names = [];
-    var selected = this.shadowRoot.querySelectorAll('li.selected');
+    var selected = this.root.querySelectorAll('li.selected');
     for (var i = 0; i < selected.length; i++) {
       names.push(selected[i].querySelector('.label').textContent);
     }
-    this.shadowRoot.querySelector('button.handle span')
+    this.root.querySelector('button.handle span')
         .textContent = names.join(', ');
   };
 
   BrickSelectProxyElementPrototype.animateMenuItemClick = function (item, ev) {
-    var animate = this.shadowRoot.querySelector('.feedback.animate');
+    var animate = this.root.querySelector('.feedback.animate');
     if (animate) { animate.classList.remove('animate'); }
 
     var selected = item.querySelector('.feedback');
@@ -318,18 +319,6 @@
   });
 
   // Utility functions
-
-  function shimShadowStyles(styles, tag) {
-    if (!Platform.ShadowCSS) {
-      return;
-    }
-    for (var i = 0; i < styles.length; i++) {
-      var style = styles[i];
-      var cssText = Platform.ShadowCSS.shimStyle(style, tag);
-      Platform.ShadowCSS.addCssToDocument(cssText);
-      style.remove();
-    }
-  }
 
   function delegate(selector, handler) {
     return function(e) {
